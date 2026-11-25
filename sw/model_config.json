@@ -1,0 +1,10 @@
+{
+  "_comment": "Per-layer precision config. export reads this file and emits rtl/mem/layers.hex (one 64-bit descriptor per layer). The hardware sequencer writes the matrix unit's precision_mode register from each descriptor, so the mode changes layer-by-layer with no RTL change.",
+  "name": "mnist_mixed_bnn8",
+  "input": {"h": 28, "w": 28, "binarize_threshold": 128},
+  "layers": [
+    {"name": "conv1", "type": "conv3x3_pool2", "precision": "1bit", "in_c": 1,  "out_c": 16, "sink": "memory"},
+    {"name": "conv2", "type": "conv3x3_pool2", "precision": "1bit", "in_c": 16, "out_c": 64, "sink": "region_count"},
+    {"name": "fc",    "type": "dense",         "precision": "8bit", "in_c": 256, "out_c": 10}
+  ]
+}

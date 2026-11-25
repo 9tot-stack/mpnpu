@@ -1,0 +1,9 @@
+data/*.gz
+build/
+__pycache__/
+*.pyc
+sw/train.log
+
+gowin/impl/
+gowin/*.user
+*.log
