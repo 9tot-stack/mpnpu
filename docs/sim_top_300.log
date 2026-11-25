@@ -1,0 +1,6 @@
+probe OK: NPU1
+images: 300  errors vs golden: 0  accuracy vs labels: 294/300
+precision_mode seen 0:1 1:1 ; busy cycles in mode0 (1-bit conv) = 13081202, mode1 (int8 dense) = 98998 (summed over images)
+compute latency (cycles @ 27 MHz): last 43934, max 43934  -> 1.627 ms
+PASS
+tb/tb_top.sv:84: $finish called at 157232495000 (1ps)
