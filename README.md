@@ -20,41 +20,22 @@ It is **inspired by and designed to plug into** [Google's Coral NPU](https://git
 | Full inference is bit-exact vs a Python golden model | **Verified (simulation)**: 300 test images, 0 mismatches (log: `docs/sim_top_300.log`) | `tb/tb_top.sv`: real UART protocol; checks class, all 256 intermediate counts, winning logit per image. `make sim-top` runs 64 images; 300 via `-Ptb_top.NV=300` after `train_export.py --skip-train --n-vectors 300` |
 | MNIST accuracy | **Measured**: 96.65% on the full 10,000-image test set | integer golden model (`sw/golden.py`), agrees with the float model on 99.99% of images |
 | Compute latency | **Measured in simulation**: 43,934 cycles = **1.63 ms @ 27 MHz** | cycle counter in the core |
-| End-to-end latency < 20 ms | **Computed**, not measured on hardware: ~10.6 ms @ 115200 baud, ~2.7 ms @ 1 Mbaud | arithmetic on the protocol (99 bytes up, 4 back) + measured compute |
+| MNIST accuracy on the board | **Measured on hardware**: 964/1000 = 96.4% (first 1000 test images; 99/100 on the first 100) | `sw/host_client.py` over UART; consistent with the 96.65% golden-model figure |
+| End-to-end latency < 20 ms | **Measured on hardware** @ 115200 baud: mean 12.3 ms, max 13.0 ms over 1000 images (one earlier 100-image run had a 19.4 ms outlier, likely host/USB jitter); ~2.7 ms @ 1 Mbaud is arithmetic only | `sw/host_client.py` round trip incl. Windows USB serial; on-chip compute reads back as 43,934 cycles |
 | Weight storage reduction ≥ 60% | **Met**: 68.7% (packed) / 64.6% (as stored) smaller than all-INT8 | `docs/model_report.json` |
-| Fits the GW1NR-9 | **Synthesis estimate only** (Yosys): see [Resources](#resources) | no Gowin EDA place-and-route was possible here |
-| Timing at 27 MHz for the full design | **Not verified** | only the matrix unit alone was timed (51 MHz) |
-| Runs on a real board / power < 0.5 W | **Not tested / not measured** | no hardware or Gowin power analyzer available |
+| Fits the GW1NR-9 | **Verified (Gowin EDA V1.9.11.03 Education)**: 38% logic, 4 DSP, 6 BSRAM, see [Resources](#resources) | synthesis + place-and-route completed |
+| Timing at 27 MHz for the full design | **Verified (Gowin P&R report)**: Fmax 42.3 MHz, 0 setup / 0 hold violations, worst slack +13.4 ns | slow-corner timing model |
+| Runs on a real board | **Verified**: Tang Nano 9K, programmed via SRAM, UART probe and MNIST test pass | see measured rows above |
+| Power < 0.5 W | **Not measured** | no power meter used |
 | On-device learning | **Not implemented** | see [Limitations](#limitations-and-roadmap) |
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    PC["PC: host_client.py<br/>(pyserial only)"] -- "UART 8N1<br/>0xA5 + 98 B image" --> RX[uart_rx]
-    RX --> LD["pixel loader<br/>8 writes / byte"]
-    LD --> A0[("act0 BSRAM<br/>1024x16")]
-    subgraph CORE["mpnpu_core"]
-        DESC[("layers.hex<br/>layer table")] --> SEQ["layer sequencer FSM<br/>window gather, issue, pool"]
-        SEQ -- "writes per layer" --> PM{{"precision_mode<br/>(single register)"}}
-        A0 --> SEQ
-        SEQ <--> A1[("act1 BSRAM<br/>1024x16")]
-        W[("weights BSRAM<br/>2 x 1024x32 = 64-bit beat")] --> MU
-        SEQ -- "a: 64-bit beat" --> MU
-        PM --> MU
-        subgraph MU["matrix_unit (3-stage pipeline)"]
-            direction TB
-            B["mode 0: XNOR + popcount64<br/>LUTs only"]
-            I["mode 1: 8 x INT8 MAC<br/>8 DSP MULT9X9"]
-        end
-        MU -- "acc" --> POST["mode 0: threshold + 2x2 OR-pool<br/>mode 1: + bias, argmax"]
-        TH[("thr / bias ROM")] --> POST
-        POST --> CNT["256 region counters<br/>(4 regions x 64 ch)"]
-        CNT -- "int8 activations" --> SEQ
-    end
-    CORE --> TX[uart_tx]
-    TX -- "0x5A, class, cycles" --> PC
-```
+<p align="center">
+  <a href="docs/architecture.svg"><img src="docs/architecture.svg" alt="mpnpu architecture: UART in, layer sequencer, switchable matrix unit (1-bit XNOR+popcount / INT8 MAC), post-processing, UART out" width="100%"></a>
+</p>
+
+<sub>Click the diagram to open it full size. A PNG copy is in <a href="docs/architecture.png">docs/architecture.png</a>.</sub>
 
 ### The network
 
@@ -125,7 +106,17 @@ activation buffers) because blocks are allocated whole.
 
 ## Resources
 
-From `make synth` (Yosys 0.71 `synth_gowin`, not Gowin EDA, so treat as an estimate):
+Real numbers from Gowin EDA V1.9.11.03 Education (synthesis + place-and-route, GW1NR-9C):
+
+| Resource | Used | Available |
+|---|---|---|
+| Logic (LUT/ALU/MUX) | 3,214 (38%) | 8,640 |
+| Registers | 1,758 (27%) | 6,693 |
+| BSRAM | 6 (2 SDPB + 4 pROM) | 26 |
+| DSP | 4 `MULTADDALU18X18` | 20 |
+| Fmax (27 MHz constraint) | 42.3 MHz, 0 violations | |
+
+The open-source estimate below (Yosys 0.71 `synth_gowin`) was more pessimistic than Gowin's own result (69% vs 38% logic, 8 `MULT9X9` vs 4 `MULTADDALU18X18`); keep it only as a reference for the open-source flow:
 
 | Resource | Used | Available |
 |---|---|---|
@@ -167,7 +158,7 @@ Latency budget for one image (`make sim-top` measures the first row, the others 
 
 The default `CPB` in `rtl/mpnpu_top.sv` is 234 (115,200 baud at 27 MHz). Higher rates depend on what the
 on-board USB-UART bridge accepts; set `CPB = 27` for 1 Mbaud and pass `--baud` to the host script. This was
-not tried on hardware.
+not tried on hardware (all hardware measurements above use 115,200 baud).
 
 ## Quick start
 

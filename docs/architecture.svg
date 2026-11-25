@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#37474f"/>
+    </marker>
+    <style>
+      .box{fill:#e3f2fd;stroke:#1565c0;stroke-width:1.6}
+      .mem{fill:#fff8e1;stroke:#f57f17;stroke-width:1.6}
+      .b1{fill:#e8f5e9;stroke:#2e7d32;stroke-width:1.6}
+      .b8{fill:#fce4ec;stroke:#c2185b;stroke-width:1.6}
+      .reg{fill:#ede7f6;stroke:#5e35b1;stroke-width:2}
+      .grp{fill:#fafafa;stroke:#90a4ae;stroke-width:1.6;stroke-dasharray:7 5}
+      .mu{fill:#f3f4f6;stroke:#455a64;stroke-width:1.8}
+      .ln{stroke:#37474f;stroke-width:1.8;fill:none;marker-end:url(#ah)}
+      .ln2{stroke:#37474f;stroke-width:1.8;fill:none;marker-end:url(#ah);marker-start:url(#ah)}
+      .t{font-size:15px;fill:#1b1b1b;text-anchor:middle}
+      .tb{font-size:15px;fill:#1b1b1b;text-anchor:middle;font-weight:600}
+      .s{font-size:12.5px;fill:#455a64;text-anchor:middle}
+      .sl{font-size:12.5px;fill:#455a64}
+      .h{font-size:13px;fill:#546e7a;font-weight:600}
+    </style>
+  </defs>
+  <rect width="1200" height="760" fill="#ffffff"/>
+  <text x="600" y="26" class="tb" style="font-size:19px">mpnpu: mixed-precision 1-bit / INT8 NPU on the Tang Nano 9K</text>
+
+  <!-- PC column -->
+  <rect class="box" x="30" y="50" width="170" height="680" rx="10"/>
+  <text x="115" y="80" class="tb">PC</text>
+  <text x="115" y="102" class="s">sw/host_client.py</text>
+  <text x="115" y="120" class="s">(pyserial only)</text>
+  <text x="115" y="360" class="s">sends 0xA5 + 98 B</text>
+  <text x="115" y="378" class="s">packed 28x28 image</text>
+  <text x="115" y="640" class="s">gets 4 bytes back:</text>
+  <text x="115" y="658" class="s">0x5A, class,</text>
+  <text x="115" y="676" class="s">cycles_lo, cycles_hi</text>
+
+  <!-- input row -->
+  <rect class="box" x="250" y="62" width="120" height="56" rx="8"/>
+  <text x="310" y="86" class="tb">uart_rx</text><text x="310" y="104" class="s">8N1, 115200</text>
+  <rect class="box" x="400" y="62" width="140" height="56" rx="8"/>
+  <text x="470" y="86" class="tb">pixel loader</text><text x="470" y="104" class="s">8 writes / byte</text>
+  <rect class="mem" x="570" y="62" width="150" height="56" rx="8"/>
+  <text x="645" y="86" class="tb">act0 BSRAM</text><text x="645" y="104" class="s">1024 x 16</text>
+  <path class="ln" d="M200,90 H250"/>
+  <path class="ln" d="M370,90 H400"/>
+  <path class="ln" d="M540,90 H570"/>
+
+  <!-- core -->
+  <rect class="grp" x="240" y="150" width="940" height="500" rx="12"/>
+  <text x="256" y="172" class="h">mpnpu_core</text>
+
+  <rect class="mem" x="270" y="200" width="150" height="60" rx="8"/>
+  <text x="345" y="224" class="tb">layers.hex</text><text x="345" y="244" class="s">layer table (64 b / layer)</text>
+  <rect class="box" x="470" y="200" width="260" height="60" rx="8"/>
+  <text x="600" y="224" class="tb">layer sequencer FSM</text><text x="600" y="244" class="s">window gather, issue MACs, pool</text>
+  <rect class="mem" x="790" y="200" width="150" height="60" rx="8"/>
+  <text x="865" y="224" class="tb">act1 BSRAM</text><text x="865" y="244" class="s">1024 x 16</text>
+  <rect class="reg" x="990" y="200" width="170" height="60" rx="30"/>
+  <text x="1075" y="226" class="tb">precision_mode</text><text x="1075" y="244" class="s">single register</text>
+
+  <path class="ln" d="M420,230 H470"/>
+  <path class="ln2" d="M730,230 H790"/>
+  <path class="ln" d="M600,118 V200"/>
+  <path class="ln" d="M700,200 V182 H1075 V200"/>
+  <text x="890" y="177" class="sl">writes mode per layer</text>
+
+  <!-- weights -->
+  <rect class="mem" x="270" y="345" width="150" height="80" rx="8"/>
+  <text x="345" y="372" class="tb">weights BSRAM</text><text x="345" y="392" class="s">2 x 1024 x 32</text><text x="345" y="410" class="s">= one 64-bit beat</text>
+  <path class="ln" d="M420,385 H468"/>
+
+  <!-- matrix unit -->
+  <rect class="mu" x="470" y="310" width="330" height="215" rx="10"/>
+  <text x="635" y="332" class="tb">matrix_unit (3-stage pipeline)</text>
+  <rect class="b1" x="490" y="345" width="290" height="75" rx="8"/>
+  <text x="635" y="372" class="tb">mode 0: XNOR + popcount (64 lanes)</text>
+  <text x="635" y="392" class="s">1-bit weights, LUTs only</text>
+  <text x="635" y="409" class="s">output = match count</text>
+  <rect class="b8" x="490" y="430" width="290" height="80" rx="8"/>
+  <text x="635" y="457" class="tb">mode 1: 8 x INT8 MAC</text>
+  <text x="635" y="477" class="s">signed 8x8 multipliers + adder tree</text>
+  <text x="635" y="494" class="s">on the DSP blocks</text>
+
+  <path class="ln" d="M640,260 V310"/>
+  <text x="650" y="289" class="sl">a: 64-bit beat</text>
+  <path class="ln" d="M1075,260 V417 H800"/>
+  <text x="1085" y="340" class="sl">mode</text>
+
+  <!-- post processing -->
+  <rect class="box" x="860" y="440" width="290" height="80" rx="8"/>
+  <text x="1005" y="466" class="tb">post-processing</text>
+  <text x="1005" y="486" class="s">mode 0: threshold + 2x2 OR-pool</text>
+  <text x="1005" y="503" class="s">mode 1: + bias, argmax</text>
+  <path class="ln" d="M800,480 H860"/>
+  <text x="830" y="472" class="sl" text-anchor="middle">acc</text>
+
+  <rect class="mem" x="1000" y="565" width="150" height="56" rx="8"/>
+  <text x="1075" y="590" class="tb">thr / bias ROM</text><text x="1075" y="608" class="s">per-channel</text>
+  <path class="ln" d="M1075,565 V520"/>
+
+  <rect class="box" x="470" y="565" width="330" height="56" rx="8"/>
+  <text x="635" y="590" class="tb">256 region counters</text><text x="635" y="608" class="s">4 regions x 64 channels</text>
+  <path class="ln" d="M900,520 V593 H800"/>
+  <path class="ln" d="M470,593 H255 V290 H500 V260"/>
+  <text x="262" y="283" class="sl">int8 activations (256)</text>
+
+  <!-- output -->
+  <rect class="box" x="700" y="682" width="170" height="48" rx="8"/>
+  <text x="785" y="704" class="tb">uart_tx</text><text x="785" y="721" class="s">8N1, 115200</text>
+  <path class="ln" d="M785,650 V682"/>
+  <text x="795" y="672" class="sl">class, cycles</text>
+  <path class="ln" d="M700,706 H200"/>
+
+  <!-- legend -->
+  <rect class="b1" x="930" y="690" width="14" height="14" rx="3"/><text x="950" y="702" class="sl">1-bit path (LUTs)</text>
+  <rect class="b8" x="930" y="712" width="14" height="14" rx="3"/><text x="950" y="724" class="sl">INT8 path (DSP)</text>
+  <rect class="mem" x="1070" y="690" width="14" height="14" rx="3"/><text x="1090" y="702" class="sl">memory</text>
+</svg>
