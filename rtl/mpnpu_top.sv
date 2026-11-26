@@ -9,7 +9,7 @@
 // Compute latency in clock cycles is reported so the host can compute on-device time exactly.
 
 `ifndef MEM_DIR
-`define MEM_DIR "K:/FPGA/P1/mpnpu/mpnpu/rtl/mem/"
+`define MEM_DIR "K:/FPGA/P1/mpnpu/rtl/mem/"
 `endif
 
 module mpnpu_top #(
